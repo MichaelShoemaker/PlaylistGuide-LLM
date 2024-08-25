@@ -56,25 +56,44 @@ def get_video_transcript(video_id):
         return None
 
 
+# def get_playlist_transcripts(playlist_id):
+#     """Create a list of dictionaries with video titles, transcript texts, and timestamps from a YouTube playlist."""
+#     videos = get_playlist_videos(playlist_id)
+#     transcripts = []
+
+#     for video_id in videos:
+#         title = get_video_title(video_id)
+#         if title:
+#             transcript = get_video_transcript(video_id)
+#             if transcript:
+#                 for entry in transcript:
+#                     transcripts.append({
+#                         'Title': title.lower(),
+#                         'Text': entry['text'].lower(),
+#                         'TimeStamp': entry['start']
+#                     })
+
+#     return transcripts
 def get_playlist_transcripts(playlist_id):
-    """Create a list of dictionaries with video titles, transcript texts, and timestamps from a YouTube playlist."""
+    """Create a dictionary with video titles as keys and lists of transcript entries as values."""
     videos = get_playlist_videos(playlist_id)
-    transcripts = []
+    transcripts = {}
 
     for video_id in videos:
         title = get_video_title(video_id)
         if title:
             transcript = get_video_transcript(video_id)
             if transcript:
+                # Check if the title is already in the dictionary
+                if title.lower() not in transcripts:
+                    transcripts[title.lower()] = []  # Initialize the list for the title
                 for entry in transcript:
-                    transcripts.append({
-                        'Title': title.lower(),
+                    transcripts[title.lower()].append({
                         'Text': entry['text'].lower(),
                         'TimeStamp': entry['start']
                     })
 
     return transcripts
-
 
 
 if __name__ == '__main__':
@@ -84,5 +103,5 @@ if __name__ == '__main__':
     #Hot fixes
     # for trans in transcripts:
     #     trans['Text'] = re.sub(r'\belastic search\b', 'elasticsearch', trans['Text'], flags=re.IGNORECASE)
-    with open('transcripts_timestamps-delete.pkl', 'wb') as outfile:
+    with open('transcripts_timestamps.pkl', 'wb') as outfile:
         pickle.dump(transcripts, outfile)
