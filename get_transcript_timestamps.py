@@ -5,11 +5,8 @@ from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
 
-
 load_dotenv()
 API_KEY = os.getenv("YouTube_API_KEY")
-
-
 
 youtube = build('youtube', 'v3', developerKey=API_KEY)
 
@@ -85,7 +82,7 @@ if __name__ == '__main__':
     playlist_id = 'PL3MmuxUbc_hIB4fSqLy_0AfTjVLpgjV3R'
     transcripts = get_playlist_transcripts(playlist_id)
     #Hot fixes
-    for trans in transcripts:
-        trans['Text'] = re.sub(r'\belastic search\b', 'elasticsearch', trans['Text'], flags=re.IGNORECASE)
-    with open('transcripts_timestamps.pkl', 'wb') as outfile:
+    # for trans in transcripts:
+    #     trans['Text'] = re.sub(r'\belastic search\b', 'elasticsearch', trans['Text'], flags=re.IGNORECASE)
+    with open('transcripts_timestamps-delete.pkl', 'wb') as outfile:
         pickle.dump(transcripts, outfile)
