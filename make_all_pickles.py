@@ -31,7 +31,6 @@ def get_playlist_videos(playlist_id):
         if next_page_token is None:
             break
     history = open('video_ids','r').read().splitlines() 
-    print(history)
     new_videos = set(videos) - set(history)
     return new_videos
 
