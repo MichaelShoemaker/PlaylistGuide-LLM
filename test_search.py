@@ -20,6 +20,6 @@ def elas_search(index_name, question):
 
 if __name__ == "__main__":
     index_name = "video-content"
-    question = "What orchestrator did we use in the course?"
+    question = "mage"
     for rec in elas_search(index_name, question):
-        print(rec['_source']['link'])
+        print(rec['_source'])

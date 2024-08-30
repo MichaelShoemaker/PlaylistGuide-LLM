@@ -14,11 +14,14 @@ index_settings = {
     },
     "mappings": {
         "properties": {
+            "vid_id": {"type":"text"},
             "title": {"type": "text"},
             "timecode": {"type": "text"},
             "text": {"type": "text"},
+            "timecode_text": {"type": "text"},
             "description": {"type": "keyword"} ,
             "link": {"type": "keyword"} ,
+            "id": {"type": "keyword"} ,
             "text_vector": {"type": "keyword"} ,
             "search_vector": {"type": "dense_vector", "dims": 768, "index": True, "similarity": "cosine"},
         }
@@ -30,12 +33,9 @@ es.indices.create(index=index_name, body=index_settings)
 
 
 
-with open('transcripts_metadata_records.pkl', 'rb') as infile:
+with open('elastic_search_data.pkl', 'rb') as infile:
     transcripts = pickle.load(infile)
 
-for transcript in transcripts:
-    transcript['text_vector'] = transcript['title']+' '+transcript['text']+' '+transcript['description']
-    transcript['search_vector'] = model.encode(transcript['text_vector'])
 
 for doc in transcripts:
     try:

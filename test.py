@@ -1,5 +1,4 @@
 import os
-import os.path
 import re
 import pickle
 from dotenv import load_dotenv
@@ -64,32 +63,66 @@ def extract_timecodes_and_descriptions(description):
     
     return timecodes
 
-def create_timestamp_dicts(video_id, video_metadata, timecodes):
+def get_transcript(video_id):
+    """
+    Retrieves the transcript for a given YouTube video ID.
+    """
+    try:
+        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        return transcript
+    except Exception as e:
+        print(f"Could not retrieve transcript for video ID: {video_id} - {e}")
+        return []
+
+def convert_time_to_seconds(time_str):
+    """
+    Converts a time string (e.g., "2:34" or "1:23:45") to seconds.
+    """
+    if isinstance(time_str, (int, float)):
+        return float(time_str)
+    
+    parts = time_str.split(":")
+    if len(parts) == 2:
+        minutes, seconds = map(int, parts)
+        return minutes * 60 + seconds
+    elif len(parts) == 3:
+        hours, minutes, seconds = map(int, parts)
+        return hours * 3600 + minutes * 60 + seconds
+    return 0
+
+def create_timestamp_dicts(video_id, video_metadata, timecodes, transcript):
     """
     Creates a list of dictionaries for each timecode, including title, timecode, text, description, and link.
     """
     base_url = f"https://www.youtube.com/watch?v={video_id}"
     
+    transcript_texts = [
+        {'start': float(item['start']), 'text': item['text']} for item in transcript
+    ]
+    
     timestamp_dicts = []
-
-    for time_str, text in timecodes:
-        parts = time_str.split(":")
-        if len(parts) == 2:
-            minutes, seconds = map(int, parts)
-            time_in_seconds = minutes * 60 + seconds
-        elif len(parts) == 3:
-            hours, minutes, seconds = map(int, parts)
-            time_in_seconds = hours * 3600 + minutes * 60 + seconds
+    
+    for i, (time_str, timecode_text) in enumerate(timecodes):
+        start_time = convert_time_to_seconds(time_str)
+        if i < len(timecodes) - 1:
+            end_time = convert_time_to_seconds(timecodes[i + 1][0])
         else:
-            continue
+            end_time = float('inf')
         
-        link = f"{base_url}&t={time_in_seconds}s"
+        # Get the transcript text between start_time and end_time
+        transcript_text = ' '.join([
+            item['text'] for item in transcript_texts 
+            if start_time <= item['start'] < end_time
+        ])
+        
+        link = f"{base_url}&t={start_time}s"
         
         timestamp_dict = {
-            'vid_id' : video_id,
+            'vid_id': video_id,
             'title': video_metadata['title'],
             'timecode': time_str,
-            'text': text,
+            'text': transcript_text,
+            'timecode_text': timecode_text,
             'description': video_metadata['description'].split('\n\n')[0],
             'link': link
         }
@@ -119,8 +152,9 @@ def get_playlist_info_and_timestamps(api_key, playlist_id):
         }
 
         timecodes = extract_timecodes_and_descriptions(video_metadata['description'])
+        transcript = get_transcript(video_id)
         
-        timestamp_dicts = create_timestamp_dicts(video_id, video_metadata, timecodes)
+        timestamp_dicts = create_timestamp_dicts(video_id, video_metadata, timecodes, transcript)
         
         all_timestamps.extend(timestamp_dicts)
 
@@ -132,7 +166,6 @@ playlist_id = 'PL3MmuxUbc_hIB4fSqLy_0AfTjVLpgjV3R'  # Replace with your actual p
 
 # Get information and timestamps for the entire playlist
 playlist_timestamps = get_playlist_info_and_timestamps(api_key, playlist_id)
-
 
 with open('transcripts_metadata_records.pkl', 'wb') as outfile:
     pickle.dump(playlist_timestamps, outfile)
