@@ -33,10 +33,11 @@ data = create_dataset()
 data_ids = gen_ids(data)
 load_data = add_vectors(data_ids)
 
-for i in load_data:
-    if '5' in i['title']:
-        print(i['title'])
 
+# with open('inspect.txt','w') as outfile:
+#     for i in data_ids:
+#         print(i)
+#         outfile.writelines(str(i)+'\n')
 with open('elastic_search_data.pkl', 'wb') as outfile:
     pickle.dump(load_data, outfile)
 
@@ -52,18 +53,18 @@ with open('elastic_search_data.pkl', 'wb') as outfile:
 # """
 
 
-# client = OpenAI()
+client = OpenAI()
 
-# def add_keywords(data, prompt):
-#     completion = client.chat.completions.create(
-#         model="gpt-4o-mini",
-#         messages=[
-#             {"role": "system", "content": f"{prompt}"},
-#             {
-#                 "role": "user",
-#                 "content": f"{data}"
-#             }
-#         ]
-#     )
+def add_keywords(data, prompt):
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": f"{prompt}"},
+            {
+                "role": "user",
+                "content": f"{data}"
+            }
+        ]
+    )
 
-#     return completion.choices[0].message
+    return completion.choices[0].message

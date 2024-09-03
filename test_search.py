@@ -15,11 +15,12 @@ def elas_search(index_name, question):
         "k": 10,
         "num_candidates": 10000, 
     }
+
     res = es.search(index=index_name, knn=query, source=["title","link"])
     return res["hits"]["hits"]
 
 if __name__ == "__main__":
     index_name = "video-content"
-    question = "mage"
+    question = "When was Mage first introduced?"
     for rec in elas_search(index_name, question):
         print(rec['_source'])

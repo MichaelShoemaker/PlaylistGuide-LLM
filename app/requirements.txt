@@ -1,8 +1,6 @@
 streamlit
 elasticsearch
 sentence-transformers
+openai
 psycopg2-binary
 python-dotenv
-google-api-python-client
-youtube-transcript-api
-openai

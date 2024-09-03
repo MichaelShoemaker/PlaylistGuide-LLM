@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import pickle
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
@@ -30,7 +31,13 @@ def get_videos_in_playlist(api_key, playlist_id):
             video_ids.append(item['contentDetails']['videoId'])
 
         request = youtube.playlistItems().list_next(request, response)
-
+    if os.path.isfile('processed.txt'):
+        historical = set()
+        with open('processed.txt','r') as infile:
+            for id in infile:
+                historical.add(id)
+        return list(set(video_ids) - historical)
+    
     return video_ids
 
 def get_video_metadata(api_key, video_id):
@@ -102,32 +109,46 @@ def create_timestamp_dicts(video_id, video_metadata, timecodes, transcript):
     
     timestamp_dicts = []
     
-    for i, (time_str, timecode_text) in enumerate(timecodes):
-        start_time = convert_time_to_seconds(time_str)
-        if i < len(timecodes) - 1:
-            end_time = convert_time_to_seconds(timecodes[i + 1][0])
-        else:
-            end_time = float('inf')
-        
-        # Get the transcript text between start_time and end_time
-        transcript_text = ' '.join([
-            item['text'] for item in transcript_texts 
-            if start_time <= item['start'] < end_time
-        ])
-        
-        link = f"{base_url}&t={start_time}s"
-        
+    # If no timecodes are found, use the entire transcript with a default timecode
+    if not timecodes:
+        entire_transcript_text = ' '.join([item['text'] for item in transcript_texts])
         timestamp_dict = {
             'vid_id': video_id,
             'title': video_metadata['title'],
-            'timecode': time_str,
-            'text': transcript_text,
-            'timecode_text': timecode_text,
+            'timecode': '00:00',
+            'text': entire_transcript_text,
+            'timecode_text': 'Full Transcript',
             'description': video_metadata['description'].split('\n\n')[0],
-            'link': link
+            'link': base_url
         }
-        
         timestamp_dicts.append(timestamp_dict)
+    else:
+        for i, (time_str, timecode_text) in enumerate(timecodes):
+            start_time = convert_time_to_seconds(time_str)
+            if i < len(timecodes) - 1:
+                end_time = convert_time_to_seconds(timecodes[i + 1][0])
+            else:
+                end_time = float('inf')
+            
+            # Get the transcript text between start_time and end_time
+            transcript_text = ' '.join([
+                item['text'] for item in transcript_texts 
+                if start_time <= item['start'] < end_time
+            ])
+            
+            link = f"{base_url}&t={start_time}s"
+            
+            timestamp_dict = {
+                'vid_id': video_id,
+                'title': video_metadata['title'],
+                'timecode': time_str,
+                'text': transcript_text,
+                'timecode_text': timecode_text,
+                'description': video_metadata['description'].split('\n\n')[0],
+                'link': link
+            }
+            
+            timestamp_dicts.append(timestamp_dict)
     
     return timestamp_dicts
 
@@ -136,6 +157,10 @@ def get_playlist_info_and_timestamps(api_key, playlist_id):
     Main function that retrieves video metadata and creates timestamp dictionaries for each video in a playlist.
     """
     video_ids = get_videos_in_playlist(api_key, playlist_id)
+
+    if len(video_ids) == 0:
+        print("There are no new videos to process")
+        sys.exit(1)
     
     all_timestamps = []
 
@@ -167,5 +192,19 @@ playlist_id = 'PL3MmuxUbc_hIB4fSqLy_0AfTjVLpgjV3R'  # Replace with your actual p
 # Get information and timestamps for the entire playlist
 playlist_timestamps = get_playlist_info_and_timestamps(api_key, playlist_id)
 
+
 with open('transcripts_metadata_records.pkl', 'wb') as outfile:
     pickle.dump(playlist_timestamps, outfile)
+
+processed = set()
+for i in playlist_timestamps:
+    processed.add(i['vid_id'])
+
+if os.path.isfile('processed.txt'):
+    with open('processed.txt','a') as infile:
+        for rec in list(processed):
+            infile.writelines(rec+'\n')
+else:
+    with open('processed.txt','w') as infile:
+        for rec in list(processed):
+            infile.writelines(rec+'\n')
