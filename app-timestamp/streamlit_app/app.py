@@ -101,8 +101,8 @@ def search_and_answer(question):
 if st.button("Search"):
     if question:
         answer, links = search_and_answer(question)
-        st.write("Answer from OpenAI:")
-        st.write(answer)
+        # st.write("Answer from OpenAI:")
+        # st.write(answer)
         st.write("Relevant Video Links:")
         for link in links:
             st.write(link)
