@@ -223,15 +223,16 @@ playlist_timestamps = get_playlist_info_and_timestamps(api_key, playlist_id)
 with open('transcripts_metadata_records.pkl', 'wb') as outfile:
     pickle.dump(playlist_timestamps, outfile)
 
-processed = set()
-for i in playlist_timestamps:
-    processed.add(i['vid_id'])
+# TODO - read in old pickle file if exists and just add new records
+# processed = set()
+# for i in playlist_timestamps:
+#     processed.add(i['vid_id'])
 
-if os.path.isfile('processed.txt'):
-    with open('processed.txt','a') as infile:
-        for rec in list(processed):
-            infile.writelines(rec+'\n')
-else:
-    with open('processed.txt','w') as infile:
-        for rec in list(processed):
-            infile.writelines(rec+'\n')
+# if os.path.isfile('processed.txt'):
+#     with open('processed.txt','a') as infile:
+#         for rec in list(processed):
+#             infile.writelines(rec+'\n')
+# else:
+#     with open('processed.txt','w') as infile:
+#         for rec in list(processed):
+#             infile.writelines(rec+'\n')
