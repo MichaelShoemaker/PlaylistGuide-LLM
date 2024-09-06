@@ -20,7 +20,7 @@ def elas_search(index_name, question):
     return res["hits"]["hits"]
 
 if __name__ == "__main__":
-    index_name = "video-content"
-    question = "When was Mage first introduced?"
+    index_name = "full_transcripts"
+    question = "How do we run elasticsearch in docker?"
     for rec in elas_search(index_name, question):
         print(rec['_source'])

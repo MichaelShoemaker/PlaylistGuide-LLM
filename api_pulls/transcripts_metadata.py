@@ -1,3 +1,30 @@
+"""
+This script retrieves metadata and timestamps from YouTube videos within a specific playlist and saves the data to a pickle file.
+
+The script performs the following tasks:
+1. Loads the YouTube API key from environment variables using `dotenv`.
+2. Connects to the YouTube API using the `googleapiclient.discovery` module.
+3. Retrieves the list of video IDs from a specified YouTube playlist.
+4. For each video in the playlist:
+   - Fetches video metadata (title and description).
+   - Extracts timecodes and their associated descriptions from the video description using regex.
+   - Converts the extracted timecodes into clickable YouTube links at the corresponding timestamps.
+5. Compiles the video metadata, timecodes, and clickable links into a list of dictionaries.
+6. Saves the compiled data into a pickle file named `transcripts_metadata_records.pkl` for later use.
+
+Functions:
+- `get_videos_in_playlist(api_key, playlist_id)`: Fetches all video IDs in a given playlist.
+- `get_video_metadata(api_key, video_id)`: Retrieves metadata for a specific video.
+- `extract_timecodes_and_descriptions(description)`: Uses regex to extract timecodes and associated descriptions from the video description.
+- `create_timestamp_dicts(video_id, video_metadata, timecodes)`: Creates a dictionary for each timecode with video metadata and clickable timestamps.
+- `get_playlist_info_and_timestamps(api_key, playlist_id)`: Combines all previous functions to generate a list of timestamp dictionaries for each video in a playlist.
+
+Finally, the compiled data is saved in a pickle file for persistence.
+
+Example:
+To use the script, replace `API_KEY` with your YouTube API key and `playlist_id` with the desired playlist's ID.
+"""
+
 import os
 import re
 import sys
