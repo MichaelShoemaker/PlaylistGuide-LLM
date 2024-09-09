@@ -21,6 +21,6 @@ def elas_search(index_name, question):
 
 if __name__ == "__main__":
     index_name = "video-content"
-    question = "How do we automate RAG creation with Mage?"
+    question = "Mage Orchestrator?"
     for rec in elas_search(index_name, question):
-        print(rec['_source'])
+        print(rec)
