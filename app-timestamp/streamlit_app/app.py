@@ -23,7 +23,7 @@ postgres_port = os.getenv("POSTGRES_PORT", "5432")
 
 # Initialize connections
 es = Elasticsearch(elasticsearch_url)
-model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
 openai.api_key = openai_api_key
 
 # Initialize PostgreSQL database with required table
@@ -61,23 +61,47 @@ question = st.text_input("Ask a question about the YouTube videos")
 # Function to perform Elasticsearch search and interact with OpenAI
 def search_and_answer(question):
     vector_search_term = model.encode(question)#.tolist()
-    query = {
-        "size": 5,
-        "knn": {
-            "field": "search_vector",
-            "query_vector": vector_search_term,
-            "k": 10,
-            "num_candidates": 10000
-        },
-        "_source": ["title", "link", "text"]
+def knn_query(question):
+    return  {
+        "field": "text_vector",
+        "query_vector": model.encode(question),
+        "k": 5,
+        "num_candidates": 10000,
+        "boost": 0.5,
+        
     }
-    try:
-        res = es.search(index="video-content", body=query)
-    except Exception as e:
-        st.error(f"Error during Elasticsearch query: {e}")
-        return "", []
 
-    search_results = res["hits"]["hits"]
+def keyword_query(question):
+    return {
+        "bool": {
+            "must": {
+                "multi_match": {
+                    "query": f"{question}",
+                    "fields": ["description^3", "text", "title"],
+                    "type": "best_fields",
+                    "boost": 0.5,
+                }
+            },
+        }
+    }
+
+def multi_search(key_word):
+    response = es.search(
+        index='video-content',
+        query=keyword_query(key_word),
+        knn=knn_query(key_word),
+        size=10
+    )
+    response["hits"]["hits"]
+    # # try:
+    # #     res = es.search(index="video-content", body=query)
+    # try:
+    #     multi_search(question)
+    # except Exception as e:
+    #     st.error(f"Error during Elasticsearch query: {e}")
+    #     return "", []
+
+    search_results = multi_search(question)
 
     # Compile context from search results
     context = "\n".join([hit["_source"]["text"] for hit in search_results])
@@ -100,7 +124,7 @@ def search_and_answer(question):
 # Perform search and display results
 if st.button("Search"):
     if question:
-        answer, links = search_and_answer(question)
+        answer, links = multi_search(question)
         # st.write("Answer from OpenAI:")
         # st.write(answer)
         st.write("Relevant Video Links:")
