@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the current directory contents into the container
 COPY data_inserter.py .
-COPY data/elastic_search_data.pkl ./data/
+COPY data/fixed_ground_truth.pkl ./data/
 
 # Command to run the data insertion script and then keep the container alive
 CMD ["sh", "-c", "python data_inserter.py && tail -f /dev/null"]
