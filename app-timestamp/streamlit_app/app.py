@@ -36,6 +36,8 @@ def init_db():
         port=postgres_port
     )
     cursor = conn.cursor()
+    
+    # Create the table if it doesn't exist
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS feedback (
             id SERIAL PRIMARY KEY,
@@ -45,9 +47,21 @@ def init_db():
             date_time TIMESTAMP
         );
     """)
+    
+    # Ensure the sequence exists and adjust it if necessary
+    cursor.execute("""
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'feedback_id_seq') THEN
+                CREATE SEQUENCE feedback_id_seq START 1;
+            END IF;
+        END $$;
+    """)
+    
     conn.commit()
     cursor.close()
     conn.close()
+
 
 # Call the init_db function to set up the table
 init_db()
