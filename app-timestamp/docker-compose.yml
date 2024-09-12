@@ -5,11 +5,23 @@ services:
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms2g -Xmx2g 
       - xpack.security.enabled=false
     ports:
       - "9200:9200"
     volumes:
       - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 4g  # Limit the total memory to 4GB
+          cpus: "2.0"  # Limit Elasticsearch to use at most 2 CPU cores
+
 
   db:
     image: postgres:13
@@ -21,6 +33,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
 
   pgadmin:
     image: dpage/pgadmin4
@@ -61,8 +74,12 @@ services:
       - ELASTICSEARCH_PORT=9200
       - ELASTICSEARCH_INDEX=video-content
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
+
+
 
 volumes:
   esdata:
   pgdata:
+

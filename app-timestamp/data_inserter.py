@@ -7,7 +7,7 @@ model_name = 'multi-qa-MiniLM-L6-cos-v1'
 model = SentenceTransformer(model_name)
 
 # Connect to Elasticsearch
-es_client = Elasticsearch('http://localhost:9200') 
+es_client = Elasticsearch('http://elasticsearch:9200') 
 
 index_settings = {
     "settings": {
@@ -57,7 +57,7 @@ es_client.indices.create(index=index_name, body=index_settings)
 
 
 # Load the transcripts data
-with open('fixed_ground_truth.pkl','rb') as infile:
+with open('./data/fixed_ground_truth.pkl','rb') as infile:
     data = pickle.load(infile)
 
 
