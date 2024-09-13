@@ -84,10 +84,7 @@ services:
       - "11434:11434"
     volumes:
       - ollama-data:/root/.ollama
-    entrypoint: /bin/sh -c "ollama pull llama3 && ollama serve"
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
+    entrypoint: /bin/sh -c "ollama serve"
 
 
 volumes:
