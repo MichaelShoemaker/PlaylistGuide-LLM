@@ -1,4 +1,5 @@
 import os
+import ollama
 from dotenv import load_dotenv
 import streamlit as st
 from elasticsearch import Elasticsearch
@@ -114,36 +115,57 @@ def multi_search(key_word):
     ]
 
 
-    # Use OpenAI to generate an answer
-    # try:
-    #     response = openai.Completion.create(
-    #         engine="davinci",
-    #         prompt=f"Question: {question}\nContext: {context}\nAnswer:",
-    #         max_tokens=150
-    #     )
-    #     answer = response["choices"][0]["text"].strip()
-    # except Exception as e:
-    #     st.error(f"Error during OpenAI completion: {e}")
-    #     answer = ""
-    # answer = context
+    # Use Ollama to generate an answer
+def ask_ollama(prompt):
+    response = ollama.chat(model='llama3', messages=[
+    {
+        'role': 'user',
+        'content': f"{prompt}",
+    },
+    ])
+    return response['message']['content']
+
+def make_context(question, records):
+    return f"""
+        You are a helpful program which is given a quesion and then the results from video transcripts which should answer the question given.
+        This is an online course about using Retreival Augmented Generation (RAGS) and LLMs as well as how to evaluate the results of elasticsearch
+        and the answers from the LLMs, how to monitor the restults etc. In the Course we used MAGE as an Orchestrator and PostgreSQL to capture user
+        feedback. Given the question below, look at the records in the RECORDS section and return the best matching video link and a short summary
+        and answer if you are able to which will answer the students question.
+
+        QUESTION:
+        {question}
+
+        RECORDS:
+        {records}
+        """
+
+def get_answer(question):
+    ask_ollama(make_context(question, multi_search(question)))
+    try:
+        answer = ask_ollama()
+    except Exception as e:
+        st.error(f"Error during Ollama completion: {e}")
+        answer = ""
+
 
 
 # Perform search and display results
 if st.button("Search"):
     if question:
-        results = multi_search(question)
+        results = get_answer(question)
         
         st.write("### Relevant Video Links:")
-        for result in results:
-            title = result['title']
-            timecode = result['timecode_text']
-            link = result['link']
+        # for result in results:
+        #     title = result['title']
+        #     timecode = result['timecode_text']
+        #     link = result['link']
             
-            # Display title, timecode, and clickable link with proper formatting
-            st.markdown(f"**Title**: {title}")
-            st.markdown(f"**Timecode**: {timecode}")
-            st.markdown(f"[Watch here]({link})")
-            st.write("---")  # Separator for each result
+        #     # Display title, timecode, and clickable link with proper formatting
+        #     st.markdown(f"**Title**: {title}")
+        #     st.markdown(f"**Timecode**: {timecode}")
+        #     st.markdown(f"[Watch here]({link})")
+        #     st.write("---")  # Separator for each result
 
         # Feedback section
         st.write("Was this result helpful?")
@@ -168,7 +190,7 @@ if st.button("Search"):
             cursor.execute("""
                 INSERT INTO feedback (question, answer, feedback, date_time)
                 VALUES (%s, %s, %s, %s)
-            """, (question, answer, feedback, datetime.now()))
+            """, (question, results, feedback, datetime.now()))
             conn.commit()
             cursor.close()
             conn.close()
