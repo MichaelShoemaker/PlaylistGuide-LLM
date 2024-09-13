@@ -80,11 +80,23 @@ services:
   ollama:
     image: ollama/ollama
     container_name: ollama
-    ports:
-      - "11434:11434"
     volumes:
-      - ollama-data:/root/.ollama
-    entrypoint: /bin/sh -c "ollama serve"
+      - ollama_data:/root/.ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+        
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    depends_on:
+      - postgres
+
 
 
 volumes:
