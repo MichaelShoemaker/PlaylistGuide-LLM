@@ -20,6 +20,7 @@ index_settings = {
             "text": {"type": "text"},
             "timecode_text": {"type": "text"},
             "description": {"type": "keyword"},
+            "link":{"type":"text"},
             "id": {"type": "keyword"},
             "title_vector": {
                 "type": "dense_vector",
@@ -69,6 +70,7 @@ for i in data:
     d['text'] = i['text']
     d['timecode_text'] = i['timecode_text']
     d['description'] = i['description']
+    d['link'] = i['link']
     d['id'] = i['id']
     d['title_vector'] = model.encode(i['title'])
     d['timecode_vector'] = model.encode(i['timecode_text'])

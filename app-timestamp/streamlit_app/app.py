@@ -71,10 +71,6 @@ st.title("YouTube Transcript Search with OpenAI")
 
 # Get user input
 question = st.text_input("Ask a question about the YouTube videos")
-
-# Function to perform Elasticsearch search and interact with OpenAI
-def search_and_answer(question):
-    vector_search_term = model.encode(question)#.tolist()
 def knn_query(question):
     return  {
         "field": "text_vector",
@@ -106,20 +102,16 @@ def multi_search(key_word):
         knn=knn_query(key_word),
         size=10
     )
-    response["hits"]["hits"]
-    # # try:
-    # #     res = es.search(index="video-content", body=query)
-    # try:
-    #     multi_search(question)
-    # except Exception as e:
-    #     st.error(f"Error during Elasticsearch query: {e}")
-    #     return "", []
+    return [
+    {
+        'title': record['_source']['title'],
+        'timecode_text': record['_source']['timecode_text'],
+        'link': record['_source']['link']
+        
+    }
+    for record in response["hits"]["hits"]
+    ]
 
-    search_results = multi_search(question)
-
-    # Compile context from search results
-    context = "\n".join([hit["_source"]["text"] for hit in search_results])
-    links = [hit["_source"]["link"] for hit in search_results]
 
     # Use OpenAI to generate an answer
     # try:
@@ -132,19 +124,28 @@ def multi_search(key_word):
     # except Exception as e:
     #     st.error(f"Error during OpenAI completion: {e}")
     #     answer = ""
-    answer = context
-    return answer, links
+    # answer = context
+
 
 # Perform search and display results
 if st.button("Search"):
     if question:
-        answer, links = multi_search(question)
-        # st.write("Answer from OpenAI:")
-        # st.write(answer)
-        st.write("Relevant Video Links:")
-        for link in links:
-            st.write(link)
-        st.write("Was this answer helpful?")
+        results = multi_search(question)
+        
+        st.write("### Relevant Video Links:")
+        for result in results:
+            title = result['title']
+            timecode = result['timecode_text']
+            link = result['link']
+            
+            # Display title, timecode, and clickable link with proper formatting
+            st.markdown(f"**Title**: {title}")
+            st.markdown(f"**Timecode**: {timecode}")
+            st.markdown(f"[Watch here]({link})")
+            st.write("---")  # Separator for each result
+
+        # Feedback section
+        st.write("Was this result helpful?")
         feedback = ''
         if st.button("👍 Yes"):
             st.write("Thank you for your feedback!")
@@ -153,7 +154,7 @@ if st.button("Search"):
             st.write("Thank you for your feedback!")
             feedback = 'negative'
 
-        # Store feedback in PostgreSQL
+        # # Store feedback in PostgreSQL
         try:
             conn = psycopg2.connect(
                 dbname=postgres_db,
