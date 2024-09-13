@@ -77,9 +77,21 @@ services:
       elasticsearch:
         condition: service_healthy
 
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    entrypoint: /bin/sh -c "ollama pull llama3 && ollama serve"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
 
 volumes:
   esdata:
   pgdata:
+  ollama-data:
 

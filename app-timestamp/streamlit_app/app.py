@@ -106,7 +106,8 @@ def multi_search(key_word):
     {
         'title': record['_source']['title'],
         'timecode_text': record['_source']['timecode_text'],
-        'link': record['_source']['link']
+        'link': record['_source']['link'],
+        'text': record['_source']['text'] 
         
     }
     for record in response["hits"]["hits"]
