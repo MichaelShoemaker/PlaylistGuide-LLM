@@ -73,17 +73,11 @@ services:
       - ELASTICSEARCH_HOST=elasticsearch
       - ELASTICSEARCH_PORT=9200
       - ELASTICSEARCH_INDEX=video-content
+    volumes:
+      - ./data:/app/data
     depends_on:
       elasticsearch:
         condition: service_healthy
-
-  # ollama:
-  #   image: ollama/ollama
-  #   container_name: ollama
-  #   volumes:
-  #     - ollama-data:/root/.ollama
-  #   ports:
-  #     - "${OLLAMA_PORT:-11434}:11434"
         
   grafana:
     image: grafana/grafana:latest

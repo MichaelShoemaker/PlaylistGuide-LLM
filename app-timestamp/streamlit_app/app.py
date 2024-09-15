@@ -1,5 +1,6 @@
 import os
 # import ollama
+import json
 from openai import OpenAI
 from dotenv import load_dotenv
 import streamlit as st
@@ -54,7 +55,15 @@ def init_db():
         );
     """)
 
-    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS bad_responses (
+            id SERIAL PRIMARY KEY,
+            question TEXT NOT NULL,
+            raw_response TEXT NOT NULL,
+            date_time TIMESTAMP NOT NULL
+        );
+    """)
+
     # Ensure the sequence exists and adjust it if necessary
     cursor.execute("""
         DO $$ 
@@ -64,7 +73,7 @@ def init_db():
             END IF;
         END $$;
     """)
-    
+
     conn.commit()
     cursor.close()
     conn.close()
@@ -183,56 +192,58 @@ def get_answer(question):
         answer = ""
     return answer
 
-def check_response_format(response):
-    # Check if the response contains the required keys
-    required_keys = {"summary", "title", "link"}
-    if isinstance(response, dict) and required_keys.issubset(response.keys()):
-        return True
-    return False
 
 def display_response(response):
-    if check_response_format(response):
-        st.markdown(f"### Video Title: {response['title']}")
-        st.markdown(f"**Summary**: {response['summary']}")
-        st.markdown(f"[Watch Video]({response['link']})")
-    else:
-        st.error("Response does not conform to the expected format.")
-        st.json(response)
+    st.markdown(f"### Video Title: {response['title']}")
+    st.markdown(f"**Summary**: {response['summary']}")
+    st.markdown(f"[Watch Video]({response['link']})")
+
 
 # Perform search and display results
 if st.button("Search"):
     if question:
-        response = get_answer(question)
-        if check_response_format(response.content):
+        results = get_answer(question)
+        
+        try:
+            # Check if results.content is a JSON string and parse it
+            response = json.loads(results.content) if isinstance(results.content, str) else results.content
+        except json.JSONDecodeError as e:
+            st.write(f"Error decoding JSON: {str(e)}")
+            st.write(results.content)  # Show the raw content for debugging
+        except Exception as e:
+            st.write(f"Unexpected error: {str(e)}")
+            st.write(results.content)
 
-            # Streamlit app display
-            # st.write(f"Summary: {response.content['summary']}")
-            # st.write(f"Title:" {response.content['title']}")
-            # st.title("Relevant Video Links")
-            # st.write(f"Link:{response.content['link']}")
+        if isinstance(response, dict):
+            display_response(response)
+        else:
+            st.write("Response is not in the expected format.")
+            
         
 
-
-        # Display the response
-            display_response(response.content)
-        else:
-            st.write(response.content)
+    # if question:
+    #     response = get_answer(question)
+    #     if check_response_format(response.content):
+    #         display_response(response.content)
+    #     else:
+    #         st.write(response.content)
 
         # Feedback section
-        st.write("Was this result helpful?")
-        feedback = ''
-        if st.button("👍 Yes"):
-            st.write("Thank you for your feedback!")
-            feedback = 'positive'
-        elif st.button("👎 No"):
-            st.write("Thank you for your feedback!")
-            feedback = 'negative'
+    st.write("Was this result helpful?")
+    feedback = None
+    if st.button("👍 Yes"):
+        st.write("Thank you for your feedback!")
+        feedback = 'positive'
+    elif st.button("👎 No"):
+        st.write("Thank you for your feedback!")
+        feedback = 'negative'
 
-        # Comment field for users
-        st.write("Any additional comments?")
-        comments = st.text_area("Enter your comments here")
+    # Comment field for users
+    st.write("Any additional comments?")
+    comments = st.text_area("Enter your comments here")
 
-        # Insert data into PostgreSQL
+    # Insert data into PostgreSQL only if feedback is provided
+    if feedback is not None:
         try:
             conn = psycopg2.connect(
                 dbname=postgres_db,
@@ -243,20 +254,34 @@ if st.button("Search"):
             )
             cursor = conn.cursor()
 
-            # Capture all fields from the `results` dictionary
-            cursor.execute("""
-                INSERT INTO feedback (question, answer, feedback, comments, title, timecode_text, link, date_time)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                question,  # The original question from the user
-                results.get('content'),  # The content returned from the model
-                feedback,  # Positive or negative feedback
-                comments,  # User comments entered in the text area
-                results.get('title'),  # Title from the `results` dictionary
-                results.get('timecode_text'),  # Timecode from the `results` dictionary
-                results.get('link'),  # Link from the `results` dictionary
-                datetime.now()  # Timestamp for the feedback
-            ))
+            try:
+                # Attempt to parse `results.content` as JSON if it's a string
+                response = json.loads(results.content) if isinstance(results.content, str) else results.content
+
+                # Insert into `feedback` table
+                cursor.execute("""
+                    INSERT INTO feedback (question, answer, feedback, comments, title, timecode_text, link, date_time)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    question,  # The original question from the user
+                    response.get('summary', ''),  # Extract summary from the parsed response
+                    feedback,  # Positive or negative feedback
+                    comments,  # User comments entered in the text area
+                    response.get('title', ''),  # Title from the `response` dictionary
+                    response.get('timecode_text', ''),  # Timecode from the `response` dictionary
+                    response.get('link', ''),  # Link from the `response` dictionary
+                    datetime.now()  # Timestamp for the feedback
+                ))
+            except (json.JSONDecodeError, TypeError) as e:
+                # If response is not valid JSON or there's a TypeError, insert into `bad_responses`
+                cursor.execute("""
+                    INSERT INTO bad_responses (question, raw_response, date_time)
+                    VALUES (%s, %s, %s)
+                """, (
+                    question,  # The original question from the user
+                    results.content,  # The raw response that couldn't be parsed
+                    datetime.now()  # Timestamp for the bad response
+                ))
 
             conn.commit()
             cursor.close()
@@ -264,3 +289,5 @@ if st.button("Search"):
             st.success("Feedback submitted successfully!")
         except Exception as e:
             st.error(f"Error during feedback submission: {e}")
+    else:
+        st.warning("Please provide feedback by selecting 'Yes' or 'No'.")
