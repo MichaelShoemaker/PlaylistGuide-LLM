@@ -24,19 +24,19 @@ You may need to Enable the API. Once enabled you can then click Manage</br>
 Click the credentials button on the left and then + Create Credentials</br>
 ![API Search](./images/CreateCredentials.png)</br>
 
-## Create a .env File
-# PostgreSQL
+# Create a .env File
+### PostgreSQL
 POSTGRES_USER=postgres_user
 POSTGRES_PASSWORD=postgres_password
 POSTGRES_DB=user_feedback
 
-# pgAdmin
+### pgAdmin
 PGADMIN_DEFAULT_EMAIL=admin@example.com
 PGADMIN_DEFAULT_PASSWORD=admin_password
 
-# OpenAI API Key
+### OpenAI API Key
 OPENAI_API_KEY=your_openai_api_key
 
-# YouTube API Key
+### YouTube API Key
 YouTube_API_KEY=your_youtube_api_key
 
