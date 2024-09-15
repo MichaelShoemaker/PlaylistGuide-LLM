@@ -1,5 +1,6 @@
 import os
-import ollama
+# import ollama
+from openai import OpenAI
 from dotenv import load_dotenv
 import streamlit as st
 from elasticsearch import Elasticsearch
@@ -25,7 +26,7 @@ postgres_port = os.getenv("POSTGRES_PORT", "5432")
 # Initialize connections
 es = Elasticsearch(elasticsearch_url)
 model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
-openai.api_key = openai_api_key
+
 
 # Initialize PostgreSQL database with required table
 def init_db():
@@ -42,12 +43,17 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS feedback (
             id SERIAL PRIMARY KEY,
-            question TEXT,
-            answer TEXT,
-            feedback VARCHAR(10),
-            date_time TIMESTAMP
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            feedback VARCHAR(10) CHECK (feedback IN ('positive', 'negative')) NOT NULL,
+            comments TEXT,
+            title TEXT,
+            timecode_text TEXT,
+            link TEXT,
+            date_time TIMESTAMP NOT NULL
         );
     """)
+
     
     # Ensure the sequence exists and adjust it if necessary
     cursor.execute("""
@@ -116,22 +122,49 @@ def multi_search(key_word):
 
 
     # Use Ollama to generate an answer
-def ask_ollama(prompt):
-    response = ollama.chat(model='llama3', messages=[
-    {
-        'role': 'user',
-        'content': f"{prompt}",
-    },
-    ])
-    return response['message']['content']
+# def ask_ollama(prompt):
+#     try:
+#         # Send request to Ollama API with api_key
+#         response = ollama.chat(
+#             model='llama3', 
+#             messages=[
+#                 {
+#                     'role': 'user',
+#                     'content': prompt,
+#                 },
+#             ],
+#             # api_key='ollama'  # Adding the api_key here
+#         )
+#     except Exception as e:
+#         return f"Error running ollama {str(e)}"
+#     return response['message']['content']
+openai_api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI()
+def ask_openai(prompt):
+        response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": f"{prompt}"}
+        ],
+        temperature=0.7
+    )
 
+    # Extract response content
+        response_content = response.choices[0].message
+
+        # Optionally, print or process the response
+        return response_content
 def make_context(question, records):
     return f"""
         You are a helpful program which is given a quesion and then the results from video transcripts which should answer the question given.
         This is an online course about using Retreival Augmented Generation (RAGS) and LLMs as well as how to evaluate the results of elasticsearch
         and the answers from the LLMs, how to monitor the restults etc. In the Course we used MAGE as an Orchestrator and PostgreSQL to capture user
         feedback. Given the question below, look at the records in the RECORDS section and return the best matching video link and a short summary
-        and answer if you are able to which will answer the students question.
+        and answer if you are able to which will answer the students question. Again your response should be a link from the records in the RECORDS
+        section below. 
+
+        Please return your answer as a dictionary without json```. Just have summary, title and link as as keys in the dictionary.
 
         QUESTION:
         {question}
@@ -141,12 +174,14 @@ def make_context(question, records):
         """
 
 def get_answer(question):
-    ask_ollama(make_context(question, multi_search(question)))
+    search_results = multi_search(question)
+    prompt = make_context(question,search_results)
     try:
-        answer = ask_ollama()
+        answer = ask_openai(prompt)
     except Exception as e:
-        st.error(f"Error during Ollama completion: {e}")
+        st.error(f"Error during Ollama completion: {e} your api key is set to {openai_api_key}")
         answer = ""
+    return answer
 
 
 
@@ -154,18 +189,16 @@ def get_answer(question):
 if st.button("Search"):
     if question:
         results = get_answer(question)
-        
+        st.write("I believe you are looking for this video")
         st.write("### Relevant Video Links:")
-        # for result in results:
-        #     title = result['title']
-        #     timecode = result['timecode_text']
-        #     link = result['link']
-            
-        #     # Display title, timecode, and clickable link with proper formatting
-        #     st.markdown(f"**Title**: {title}")
-        #     st.markdown(f"**Timecode**: {timecode}")
-        #     st.markdown(f"[Watch here]({link})")
-        #     st.write("---")  # Separator for each result
+        # Display the relevant video content
+        st.write('Summary:')
+        st.write(results.content['summary'])
+        st.write('Title:')
+        st.write(results.content['title'])
+        st.write('Link:')
+        st.write(results.content['link'])
+
 
         # Feedback section
         st.write("Was this result helpful?")
@@ -177,7 +210,11 @@ if st.button("Search"):
             st.write("Thank you for your feedback!")
             feedback = 'negative'
 
-        # # Store feedback in PostgreSQL
+        # Comment field for users
+        st.write("Any additional comments?")
+        comments = st.text_area("Enter your comments here")
+
+        # Insert data into PostgreSQL
         try:
             conn = psycopg2.connect(
                 dbname=postgres_db,
@@ -187,12 +224,25 @@ if st.button("Search"):
                 port=postgres_port
             )
             cursor = conn.cursor()
+
+            # Capture all fields from the `results` dictionary
             cursor.execute("""
-                INSERT INTO feedback (question, answer, feedback, date_time)
-                VALUES (%s, %s, %s, %s)
-            """, (question, results, feedback, datetime.now()))
+                INSERT INTO feedback (question, answer, feedback, comments, title, timecode_text, link, date_time)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                question,  # The original question from the user
+                results.get('content'),  # The content returned from the model
+                feedback,  # Positive or negative feedback
+                comments,  # User comments entered in the text area
+                results.get('title'),  # Title from the `results` dictionary
+                results.get('timecode_text'),  # Timecode from the `results` dictionary
+                results.get('link'),  # Link from the `results` dictionary
+                datetime.now()  # Timestamp for the feedback
+            ))
+
             conn.commit()
             cursor.close()
             conn.close()
+            st.success("Feedback submitted successfully!")
         except Exception as e:
             st.error(f"Error during feedback submission: {e}")

@@ -5,3 +5,4 @@ openai
 psycopg2-binary
 python-dotenv
 sentence-transformers
+ollama
