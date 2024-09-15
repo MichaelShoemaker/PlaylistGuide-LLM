@@ -30,6 +30,11 @@ POSTGRES_USER=postgres_user
 POSTGRES_PASSWORD=postgres_password
 POSTGRES_DB=user_feedback
 
+### Elasticsearch
+ELASTIC_URL_LOCAL=http://localhost:9200
+ELASTIC_URL=http://elasticsearch:9200
+ELASTIC_PORT=9200
+
 ### pgAdmin
 PGADMIN_DEFAULT_EMAIL=admin@example.com
 PGADMIN_DEFAULT_PASSWORD=admin_password
