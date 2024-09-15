@@ -26,22 +26,22 @@ Click the credentials button on the left and then + Create Credentials</br>
 
 # Create a .env File
 ### PostgreSQL
-POSTGRES_USER=postgres_user
-POSTGRES_PASSWORD=postgres_password
-POSTGRES_DB=user_feedback
+POSTGRES_USER=postgres_user<br>
+POSTGRES_PASSWORD=postgres_password<br>
+POSTGRES_DB=user_feedback<br>
 
 ### Elasticsearch
-ELASTIC_URL_LOCAL=http://localhost:9200
-ELASTIC_URL=http://elasticsearch:9200
-ELASTIC_PORT=9200
+ELASTIC_URL_LOCAL=http://localhost:9200<br>
+ELASTIC_URL=http://elasticsearch:9200<br>
+ELASTIC_PORT=9200<br>
 
 ### pgAdmin
-PGADMIN_DEFAULT_EMAIL=admin@example.com
-PGADMIN_DEFAULT_PASSWORD=admin_password
+PGADMIN_DEFAULT_EMAIL=admin@example.com<br>
+PGADMIN_DEFAULT_PASSWORD=admin_password<br>
 
 ### OpenAI API Key
-OPENAI_API_KEY=your_openai_api_key
+OPENAI_API_KEY=your_openai_api_key<br>
 
 ### YouTube API Key
-YouTube_API_KEY=your_youtube_api_key
+YouTube_API_KEY=your_youtube_api_key<br>
 
