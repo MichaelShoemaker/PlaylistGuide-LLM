@@ -4,6 +4,13 @@ An LLM Chatbot which assists the user with answering questions about and finding
 ## Problem Statement
 Playlists can be quite long and finding the exact location of content can be tedious. This project aims to assist users with finding the locations (video and timestamp) of specific content and be able to answer questions about the content in a given playlist.
 
+## Project Overview
+There are three main directories of interest in this project
+* <b>app</b> - This is the directory where the transcript RAG/LLM Application is
+* <b>transcript_pulls</b> - This directory contains research for several ways in which the transcripts were attempted to be pulled
+* <b>evaluation</b> - This directory contains the generation of a ground truth data set as well as Hit Rate and MRR Evaluations
+
+
 ## Walkthrough Video
 TODO
 

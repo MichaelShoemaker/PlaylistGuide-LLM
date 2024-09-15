@@ -130,23 +130,6 @@ def multi_search(key_word):
     ]
 
 
-    # Use Ollama to generate an answer
-# def ask_ollama(prompt):
-#     try:
-#         # Send request to Ollama API with api_key
-#         response = ollama.chat(
-#             model='llama3', 
-#             messages=[
-#                 {
-#                     'role': 'user',
-#                     'content': prompt,
-#                 },
-#             ],
-#             # api_key='ollama'  # Adding the api_key here
-#         )
-#     except Exception as e:
-#         return f"Error running ollama {str(e)}"
-#     return response['message']['content']
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI()
 def ask_openai(prompt):
@@ -220,15 +203,6 @@ if st.button("Search"):
             st.write("Response is not in the expected format.")
             
         
-
-    # if question:
-    #     response = get_answer(question)
-    #     if check_response_format(response.content):
-    #         display_response(response.content)
-    #     else:
-    #         st.write(response.content)
-
-        # Feedback section
     st.write("Was this result helpful?")
     feedback = None
     if st.button("👍 Yes"):
