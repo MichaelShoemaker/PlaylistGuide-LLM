@@ -183,22 +183,40 @@ def get_answer(question):
         answer = ""
     return answer
 
+def check_response_format(response):
+    # Check if the response contains the required keys
+    required_keys = {"summary", "title", "link"}
+    if isinstance(response, dict) and required_keys.issubset(response.keys()):
+        return True
+    return False
 
+def display_response(response):
+    if check_response_format(response):
+        st.markdown(f"### Video Title: {response['title']}")
+        st.markdown(f"**Summary**: {response['summary']}")
+        st.markdown(f"[Watch Video]({response['link']})")
+    else:
+        st.error("Response does not conform to the expected format.")
+        st.json(response)
 
 # Perform search and display results
 if st.button("Search"):
     if question:
-        results = get_answer(question)
-        st.write("I believe you are looking for this video")
-        st.write("### Relevant Video Links:")
-        # Display the relevant video content
-        st.write('Summary:')
-        st.write(results.content['summary'])
-        st.write('Title:')
-        st.write(results.content['title'])
-        st.write('Link:')
-        st.write(results.content['link'])
+        response = get_answer(question)
+        if check_response_format(response.content):
 
+            # Streamlit app display
+            # st.write(f"Summary: {response.content['summary']}")
+            # st.write(f"Title:" {response.content['title']}")
+            # st.title("Relevant Video Links")
+            # st.write(f"Link:{response.content['link']}")
+        
+
+
+        # Display the response
+            display_response(response.content)
+        else:
+            st.write(response.content)
 
         # Feedback section
         st.write("Was this result helpful?")
