@@ -1,0 +1,7 @@
+streamlit
+elasticsearch
+sentence-transformers
+openai
+psycopg2-binary
+python-dotenv
+sentence-transformers
