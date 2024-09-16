@@ -265,6 +265,7 @@ if st.session_state.response:
 
                 conn.commit()
                 st.success("Feedback submitted successfully!")
+
             
             except Exception as e:
                 # Log error if something goes wrong with insertion
@@ -289,3 +290,11 @@ if st.session_state.response:
         
         except Exception as e:
             st.error(f"Error during feedback submission: {e}")
+                        # JavaScript to reload the page
+        st.write("""
+            <script>
+            setTimeout(function() {
+                window.location.reload();
+            }, 1500);  // 1.5 seconds delay before reload
+            </script>
+        """, unsafe_allow_html=True)
