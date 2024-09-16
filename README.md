@@ -24,6 +24,9 @@ You may need to Enable the API. Once enabled you can then click Manage</br>
 Click the credentials button on the left and then + Create Credentials</br>
 ![API Search](./images/CreateCredentials.png)</br>
 
+You do not have to pull the transcripts as an up to date pickle file should be present in the PlaylistGuide-LLM/app/data directory.
+If you do wish to pull fresh data, you will simply need to delete the processed.txt file (this keeps track of video IDs already pulled so they are not pulled on subsequent runs) and run pull_transcripts_metadata.py<br>
+
 ## Create OpenAI API Key and add to .env file
 Setup an OpenAI API Account<br>
 Go to: https://platform.openai.com/settings/profile?tab=api-keys<br>
@@ -62,12 +65,14 @@ change to the streamlit app directory<br>
 
 if you are on Linux you should be able to just run<br>
 ```make up```
-
+![Make Up](./images/MakeUp.gif)</br>
 or if you are on another system the equivelant of<br>
 ```docker compose up --build```
+
+<b>Note: It will take some time on the first run. Probably 15-30 minutes depending on your system.</b>
 
 # Other directories of note:
 
 * transcript_pulls - several different ways in which I tested pulling the transcripts
-- Within this directory under metadata_transcripts you can see the steps which were taken to generate ground_truth and evaluate Elasticsearch
+    - Within this directory under metadata_transcripts you can see the steps which were taken to generate ground_truth and evaluate Elasticsearch
 * research - simply a "dumping ground" of other testing scripts and expiriments without structure or organization. This may be removed.

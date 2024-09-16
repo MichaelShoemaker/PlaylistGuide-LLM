@@ -58,7 +58,7 @@ es_client.indices.create(index=index_name, body=index_settings)
 
 
 # Load the transcripts data
-with open('./data/fixed_ground_truth.pkl','rb') as infile:
+with open('./data/transcripts_metadata_records.pkl','rb') as infile:
     data = pickle.load(infile)
 
 

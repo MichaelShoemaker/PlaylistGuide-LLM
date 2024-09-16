@@ -20,7 +20,7 @@ elasticsearch_url = f"http://{elasticsearch_host}:{elasticsearch_port}"
 openai_api_key = os.getenv("OPENAI_API_KEY", "your_default_openai_key")
 postgres_user = os.getenv("POSTGRES_USER", "db_user")
 postgres_password = os.getenv("POSTGRES_PASSWORD", "admin")
-postgres_db = os.getenv("POSTGRES_DB", "feedback")
+postgres_db = os.getenv("POSTGRES_DB", "transcripts")
 postgres_host = os.getenv("POSTGRES_HOST", "db")
 postgres_port = os.getenv("POSTGRES_PORT", "5432")
 
@@ -29,6 +29,7 @@ es = Elasticsearch(elasticsearch_url)
 model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
 
 
+# Initialize PostgreSQL database with required table
 # Initialize PostgreSQL database with required table
 def init_db():
     conn = psycopg2.connect(
@@ -49,7 +50,9 @@ def init_db():
             feedback VARCHAR(10) CHECK (feedback IN ('positive', 'negative')) NOT NULL,
             comments TEXT,
             title TEXT,
+            timecode_text TEXT,
             link TEXT,
+            vector_field VARCHAR(50),  -- Add vector field column
             date_time TIMESTAMP NOT NULL
         );
     """)
@@ -63,38 +66,17 @@ def init_db():
         );
     """)
 
-    # Ensure the sequence exists and adjust it if necessary
-    cursor.execute("""
-        DO $$ 
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'feedback_id_seq') THEN
-                CREATE SEQUENCE feedback_id_seq START 1;
-            END IF;
-        END $$;
-    """)
-
     conn.commit()
     cursor.close()
     conn.close()
 
-
 # Call the init_db function to set up the table
 init_db()
 
-# Streamlit app setup
 st.title("YouTube Transcript Search with OpenAI")
 
 # Get user input
 question = st.text_input("Ask a question about the YouTube videos")
-def knn_query(question):
-    return  {
-        "field": "text_vector",
-        "query_vector": model.encode(question),
-        "k": 5,
-        "num_candidates": 10000,
-        "boost": 0.5,
-        
-    }
 
 def keyword_query(question):
     return {
@@ -110,24 +92,31 @@ def keyword_query(question):
         }
     }
 
-def multi_search(key_word):
+def knn_query(question, selected_field):
+    return  {
+        "field": selected_field,  # Use the selected field from the dropdown
+        "query_vector": model.encode(question),
+        "k": 5,
+        "num_candidates": 10000,
+        "boost": 0.5,
+    }
+
+def multi_search(key_word, selected_field):
     response = es.search(
         index='video-content',
         query=keyword_query(key_word),
-        knn=knn_query(key_word),
+        knn=knn_query(key_word, selected_field),  # Pass the selected vector field to the KNN query
         size=10
     )
     return [
-    {
-        'title': record['_source']['title'],
-        'timecode_text': record['_source']['timecode_text'],
-        'link': record['_source']['link'],
-        'text': record['_source']['text'] 
-        
-    }
-    for record in response["hits"]["hits"]
+        {
+            'title': record['_source']['title'],
+            'timecode_text': record['_source']['timecode_text'],
+            'link': record['_source']['link'],
+            'text': record['_source']['text'] 
+        }
+        for record in response["hits"]["hits"]
     ]
-
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI()
@@ -165,13 +154,16 @@ def make_context(question, records):
         """
 
 def get_answer(question):
-    search_results = multi_search(question)
-    prompt = make_context(question,search_results)
+    # Pass the selected vector field to the multi_search function
+    search_results = multi_search(question, vector_field)  # Pass vector_field from the dropdown
+    prompt = make_context(question, search_results)
+    
     try:
         answer = ask_openai(prompt)
     except Exception as e:
-        st.error(f"Error during Ollama completion: {e} your api key is set to {openai_api_key}")
+        st.error(f"Error during OpenAI completion: {e} your api key is set to {openai_api_key}")
         answer = ""
+    
     return answer
 
 
@@ -180,6 +172,17 @@ def display_response(response):
     st.markdown(f"**Summary**: {response['summary']}")
     st.markdown(f"[Watch Video]({response['link']})")
 
+# Add a dropdown to select the vector field
+vector_field = st.selectbox(
+    "Select the vector field for Elasticsearch search:",
+    ['timecode_vector', 'text_vector']
+)
+ # Initialize session state for feedback and response
+if "feedback" not in st.session_state:
+    st.session_state.feedback = None
+if "response_shown" not in st.session_state:
+    st.session_state.response_shown = False
+    
 # Perform search and display results
 if st.button("Search"):
     if question:
@@ -194,28 +197,25 @@ if st.button("Search"):
         except Exception as e:
             st.write(f"Unexpected error: {str(e)}")
             st.write(results.content)
-        st.write(response)
+
         if isinstance(response, dict):
             display_response(response)
         else:
             st.write("Response is not in the expected format.")
             
-        
+
+if st.session_state.response_shown:
     st.write("Was this result helpful?")
-    feedback = None
+    
     if st.button("👍 Yes"):
         st.write("Thank you for your feedback!")
-        feedback = 'positive'
+        st.session_state.feedback = 'positive'
     elif st.button("👎 No"):
         st.write("Thank you for your feedback!")
-        feedback = 'negative'
-
-    # Comment field for users
-    st.write("Any additional comments?")
-    comments = st.text_area("Enter your comments here")
+        st.session_state.feedback = 'negative'
 
     # Insert data into PostgreSQL only if feedback is provided
-    if feedback is not None:
+    if st.session_state.feedback is not None:
         try:
             conn = psycopg2.connect(
                 dbname=postgres_db,
@@ -227,20 +227,18 @@ if st.button("Search"):
             cursor = conn.cursor()
 
             try:
-                # Attempt to parse `results.content` as JSON if it's a string
-                response = json.loads(results.content) if isinstance(results.content, str) else results.content
-
-                # Insert into `feedback` table
+                # Insert into `feedback` table with the selected vector field
                 cursor.execute("""
-                    INSERT INTO feedback (question, answer, feedback, comments, title, link, date_time)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO feedback (question, answer, feedback, title, timecode_text, link, vector_field, date_time)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     question,  # The original question from the user
                     response.get('summary', ''),  # Extract summary from the parsed response
-                    feedback,  # Positive or negative feedback
-                    comments,  # User comments entered in the text area
+                    st.session_state.feedback,  # Positive or negative feedback from session state
                     response.get('title', ''),  # Title from the `response` dictionary
+                    response.get('timecode_text', ''),  # Timecode from the `response` dictionary
                     response.get('link', ''),  # Link from the `response` dictionary
+                    vector_field,  # Store the selected vector field
                     datetime.now()  # Timestamp for the feedback
                 ))
             except (json.JSONDecodeError, TypeError) as e:
@@ -260,5 +258,3 @@ if st.button("Search"):
             st.success("Feedback submitted successfully!")
         except Exception as e:
             st.error(f"Error during feedback submission: {e}")
-    else:
-        st.warning("Please provide feedback by selecting 'Yes' or 'No'.")
