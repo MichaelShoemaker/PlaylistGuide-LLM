@@ -65,3 +65,9 @@ if you are on Linux you should be able to just run<br>
 
 or if you are on another system the equivelant of<br>
 ```docker compose up --build```
+
+# Other directories of note:
+
+* transcript_pulls - several different ways in which I tested pulling the transcripts
+- Within this directory under metadata_transcripts you can see the steps which were taken to generate ground_truth and evaluate Elasticsearch
+* research - simply a "dumping ground" of other testing scripts and expiriments without structure or organization. This may be removed.
