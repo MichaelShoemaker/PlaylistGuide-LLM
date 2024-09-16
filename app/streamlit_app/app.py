@@ -181,44 +181,60 @@ def display_response(response):
     st.markdown(f"**Summary**: {response['summary']}")
     st.markdown(f"[Watch Video]({response['link']})")
 
+# Check if 'response' exists in session state, if not, initialize it
+if 'response' not in st.session_state:
+    st.session_state.response = None
+
+# Check if 'feedback_submitted' exists in session state, if not, initialize it
+if 'feedback_submitted' not in st.session_state:
+    st.session_state.feedback_submitted = False
+
 # Perform search and display results
 if st.button("Search"):
-    if question:
-        results = get_answer(question)
+    # Simulating response for testing purposes
+    results = get_answer(question)
+    
+    try:
+         # Check if results.content is a JSON string and parse it
+        response = json.loads(results.content) if isinstance(results.content, str) else results.content
+    except json.JSONDecodeError as e:
+        st.write(f"Error decoding JSON: {str(e)}")
+        st.write(results.content) 
+    st.session_state.response = response
+    st.session_state.feedback_submitted = False  # Reset feedback on new search
+
+# Display response if available in session state
+if st.session_state.response:
+
+    display_response(st.session_state.response)
+
+    if not st.session_state.feedback_submitted:
+        st.write("Was this result helpful?")
         
-        try:
-            # Check if results.content is a JSON string and parse it
-            response = json.loads(results.content) if isinstance(results.content, str) else results.content
-            st.session_state.response = response
-        except json.JSONDecodeError as e:
-            st.write(f"Error decoding JSON: {str(e)}")
-            st.write(results.content)  # Show the raw content for debugging
-        except Exception as e:
-            st.write(f"Unexpected error: {str(e)}")
-            st.write(results.content)
-        # st.write(response)
-        if isinstance(response, dict):
-            display_response(response)
-        else:
-            st.write("Response is not in the expected format.")
-            
-        
-    st.write("Was this result helpful?")
-    feedback = None
-    if st.button("👍 Yes"):
-        st.write("Thank you for your feedback!")
-        feedback = 'positive'
-    elif st.button("👎 No"):
-        st.write("Thank you for your feedback!")
-        feedback = 'negative'
+        # Handle feedback buttons and update session state
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("👍 Yes"):
+                st.session_state.feedback = 'positive'
+                st.session_state.feedback_submitted = True  # Mark feedback as submitted
+        with col2:
+            if st.button("👎 No"):
+                st.session_state.feedback = 'negative'
+                st.session_state.feedback_submitted = True  # Mark feedback as submitted
+
+    # Show feedback result if submitted
+    if st.session_state.feedback_submitted:
+        st.write(f"Captured Feedback: {st.session_state.feedback}")
 
     # Comment field for users
-    st.write("Any additional comments?")
     comments = st.text_area("Enter your comments here")
-
-    # Insert data into PostgreSQL only if feedback is provided
-    if feedback is not None:
+    if comments:
+        st.write(f"Captured Comments: {comments}")
+    
+    # Insert data into PostgreSQL only if feedback is provided and submission is complete
+    if st.session_state.feedback_submitted:
         try:
+            # Connect to PostgreSQL database
             conn = psycopg2.connect(
                 dbname=postgres_db,
                 user=postgres_user,
@@ -226,12 +242,12 @@ if st.button("Search"):
                 host=postgres_host,
                 port=postgres_port
             )
+            st.write("Database connection successful")
             cursor = conn.cursor()
 
             try:
-                # Attempt to parse `results.content` as JSON if it's a string
-                response = st.session_state.get("response", {})
-                # json.loads(results.content) if isinstance(results.content, str) else results.content
+                # Retrieve the response from session state
+                response = st.session_state.response
 
                 # Insert into `feedback` table
                 cursor.execute("""
@@ -240,30 +256,36 @@ if st.button("Search"):
                 """, (
                     question,  # The original question from the user
                     response.get('summary', ''),  # Extract summary from the parsed response
-                    feedback,  # Positive or negative feedback
+                    st.session_state.feedback,  # Positive or negative feedback
                     comments,  # User comments entered in the text area
                     response.get('title', ''),  # Title from the `response` dictionary
                     response.get('link', ''),  # Link from the `response` dictionary
                     datetime.now()  # Timestamp for the feedback
                 ))
-            except Exception as e:
 
-                # If response is not valid JSON or there's a TypeError, insert into `bad_responses`
+                conn.commit()
+                st.success("Feedback submitted successfully!")
+            
+            except Exception as e:
+                # Log error if something goes wrong with insertion
+                st.error(f"Error while inserting feedback: {str(e)}")
+                
+                # Insert into `bad_responses` if an error occurred
                 cursor.execute("""
                     INSERT INTO bad_responses (question, raw_response, error, date_time)
-                    VALUES (%s, %s, %s)
+                    VALUES (%s, %s, %s, %s)
                 """, (
                     question,  # The original question from the user
-                    results.content,  # The raw response that couldn't be parsed
-                    str(e),
+                    str(st.session_state.response),  # The raw response that couldn't be parsed
+                    str(e),  # The error message
                     datetime.now()  # Timestamp for the bad response
                 ))
-
-            conn.commit()
-            cursor.close()
-            conn.close()
-            st.success("Feedback submitted successfully!")
+                conn.commit()
+            
+            finally:
+                cursor.close()
+                conn.close()
+                st.write("Database connection closed")
+        
         except Exception as e:
             st.error(f"Error during feedback submission: {e}")
-    else:
-        st.warning("Please provide feedback by selecting 'Yes' or 'No'.")
