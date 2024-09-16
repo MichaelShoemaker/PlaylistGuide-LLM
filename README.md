@@ -58,7 +58,7 @@ YouTube_API_KEY=your_youtube_api_key
 ```git clone https://github.com/MichaelShoemaker/PlaylistGuide-LLM.git```
 
 change to the streamlit app directory<br>
-```cd PlayListGuide-LLM/app-timestamp/stramlit_app```
+```cd PlayListGuide-LLM/app```
 
 if you are on Linux you should be able to just run<br>
 ```make up```
