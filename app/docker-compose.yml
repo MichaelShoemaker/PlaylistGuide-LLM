@@ -94,6 +94,6 @@ services:
 volumes:
   esdata:
   pgdata:
-  ollama-data:
+  # ollama-data:
   # grafana-data:
 

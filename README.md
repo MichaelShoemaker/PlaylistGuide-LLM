@@ -14,7 +14,7 @@ There are three main directories of interest in this project
 ## Walkthrough Video
 TODO
 
-## Steps to reproduce
+# Steps to reproduce
 Optional - log into a GCP account and search for YouTube</br>
 ![API Search](./images/YouTubeAPISearch.png)</br>
 
@@ -35,7 +35,7 @@ Generate an API Key<br>
 and add it to your .env file
 
 
-# Create a .env File
+## Create a .env File
 ### PostgreSQL
 POSTGRES_USER=postgres_user<br>
 POSTGRES_PASSWORD=postgres_password<br>
@@ -57,7 +57,7 @@ OPENAI_API_KEY=your_openai_api_key<br>
 YouTube_API_KEY=your_youtube_api_key
 
 
-# Clone the respository locally
+## Clone the respository locally
 ```git clone https://github.com/MichaelShoemaker/PlaylistGuide-LLM.git```
 
 change to the streamlit app directory<br>
@@ -70,6 +70,14 @@ or if you are on another system the equivelant of<br>
 ```docker compose up --build```
 
 <b>Note: It will take some time on the first run. Probably 15-30 minutes depending on your system.</b>
+
+## Transcript Search
+You should then be able to navigate to http://localhost:8501/ and search the transcripts
+
+If you get a message with Video Title: N/A it most likely means Elasticsearch is not loaded yet. Give it several more minutes.<br>
+![ExampleSearch](./images/ExampleSearch.gif)</br>
+
+You can then try again.
 
 
 # Other directories of note:
