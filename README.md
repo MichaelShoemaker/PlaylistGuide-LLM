@@ -24,6 +24,14 @@ You may need to Enable the API. Once enabled you can then click Manage</br>
 Click the credentials button on the left and then + Create Credentials</br>
 ![API Search](./images/CreateCredentials.png)</br>
 
+## Create OpenAI API Key and add to .env file
+Setup an OpenAI API Account<br>
+Go to: https://platform.openai.com/settings/profile?tab=api-keys<br>
+Generate an API Key<br>
+![OpenAI API](./images/OpenAIAPI_Key.png)</br>
+and add it to your .env file
+
+
 # Create a .env File
 ### PostgreSQL
 POSTGRES_USER=postgres_user<br>
@@ -43,5 +51,17 @@ PGADMIN_DEFAULT_PASSWORD=admin_password<br>
 OPENAI_API_KEY=your_openai_api_key<br>
 
 ### YouTube API Key
-YouTube_API_KEY=your_youtube_api_key<br>
+YouTube_API_KEY=your_youtube_api_key
 
+
+# Clone the respository locally
+```git clone https://github.com/MichaelShoemaker/PlaylistGuide-LLM.git```
+
+change to the streamlit app directory<br>
+```cd PlayListGuide-LLM/app-timestamp/stramlit_app```
+
+if you are on Linux you should be able to just run<br>
+```make up```
+
+or if you are on another system the equivelant of<br>
+```docker compose up --build```

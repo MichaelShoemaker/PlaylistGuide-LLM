@@ -20,7 +20,7 @@ elasticsearch_url = f"http://{elasticsearch_host}:{elasticsearch_port}"
 openai_api_key = os.getenv("OPENAI_API_KEY", "your_default_openai_key")
 postgres_user = os.getenv("POSTGRES_USER", "db_user")
 postgres_password = os.getenv("POSTGRES_PASSWORD", "admin")
-postgres_db = os.getenv("POSTGRES_DB", "transcripts")
+postgres_db = os.getenv("POSTGRES_DB", "feedback")
 postgres_host = os.getenv("POSTGRES_HOST", "db")
 postgres_port = os.getenv("POSTGRES_PORT", "5432")
 
@@ -49,7 +49,6 @@ def init_db():
             feedback VARCHAR(10) CHECK (feedback IN ('positive', 'negative')) NOT NULL,
             comments TEXT,
             title TEXT,
-            timecode_text TEXT,
             link TEXT,
             date_time TIMESTAMP NOT NULL
         );
@@ -181,7 +180,6 @@ def display_response(response):
     st.markdown(f"**Summary**: {response['summary']}")
     st.markdown(f"[Watch Video]({response['link']})")
 
-
 # Perform search and display results
 if st.button("Search"):
     if question:
@@ -196,7 +194,7 @@ if st.button("Search"):
         except Exception as e:
             st.write(f"Unexpected error: {str(e)}")
             st.write(results.content)
-
+        st.write(response)
         if isinstance(response, dict):
             display_response(response)
         else:
@@ -234,15 +232,14 @@ if st.button("Search"):
 
                 # Insert into `feedback` table
                 cursor.execute("""
-                    INSERT INTO feedback (question, answer, feedback, comments, title, timecode_text, link, date_time)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO feedback (question, answer, feedback, comments, title, link, date_time)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """, (
                     question,  # The original question from the user
                     response.get('summary', ''),  # Extract summary from the parsed response
                     feedback,  # Positive or negative feedback
                     comments,  # User comments entered in the text area
                     response.get('title', ''),  # Title from the `response` dictionary
-                    response.get('timecode_text', ''),  # Timecode from the `response` dictionary
                     response.get('link', ''),  # Link from the `response` dictionary
                     datetime.now()  # Timestamp for the feedback
                 ))
