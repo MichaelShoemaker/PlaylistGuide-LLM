@@ -73,6 +73,7 @@ or if you are on another system the equivelant of<br>
 
 ## Transcript Search
 You should then be able to navigate to http://localhost:8501/ and search the transcripts
+![NoResults](./images/NoResults.png)</br>
 
 If you get a message with Video Title: N/A it most likely means Elasticsearch is not loaded yet. Give it several more minutes.<br>
 ![ExampleSearch](./images/ExampleSearch.gif)</br>
