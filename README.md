@@ -12,7 +12,7 @@ There are three main directories of interest in this project
 
 
 ## Walkthrough Video
-TODO
+[![PlaylistGuide-LLM-Walkthrough](./images/Walkthrough.png)](https://www.youtube.com/watch?v=mxlvwJ6z7ZM)
 
 # Steps to reproduce
 Optional - log into a GCP account and search for YouTube</br>

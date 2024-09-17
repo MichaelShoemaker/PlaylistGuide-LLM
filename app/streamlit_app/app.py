@@ -290,7 +290,7 @@ if st.session_state.response:
         
         except Exception as e:
             st.error(f"Error during feedback submission: {e}")
-                        # JavaScript to reload the page
+        # JavaScript to reload the page
         st.write("""
             <script>
             setTimeout(function() {
