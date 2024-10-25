@@ -1,5 +1,5 @@
 import os
-# import ollama
+import redis
 import json
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -8,6 +8,7 @@ from elasticsearch import Elasticsearch
 from sentence_transformers import SentenceTransformer
 import openai
 import psycopg2
+import numpy as np
 from datetime import datetime
 
 # Load environment variables
@@ -27,6 +28,59 @@ postgres_port = os.getenv("POSTGRES_PORT", "5432")
 # Initialize connections
 es = Elasticsearch(elasticsearch_url)
 model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
+
+
+
+# Connect to Redis
+r = redis.Redis(host='redis', port=6379, db=0)
+
+# Tokenize the question using SentenceTransformer
+def get_embedding(text):
+    return model.encode(text).tolist()
+
+# Retrieve the closest match in Redis
+def check_redis_for_similar_question(question_embedding):
+    # Ensure the question_embedding is a list of floats
+    question_embedding = [float(x) for x in question_embedding]
+
+    # Iterate through all keys (which represent previous questions in Redis)
+    for key in r.scan_iter():
+        # Retrieve the stored embedding from Redis
+        stored_embedding = r.get(key)
+        
+        if stored_embedding is None:
+            continue  # Skip if there is no stored embedding
+        
+        # Load the embedding as a JSON object
+        stored_embedding = json.loads(stored_embedding)
+        
+        # Ensure the stored embedding is also a list of floats
+        stored_embedding = [float(x) for x in stored_embedding]
+        
+        # Compare cosine similarity between the question and stored embeddings
+        try:
+            similarity = np.dot(stored_embedding, question_embedding) / (
+                np.linalg.norm(stored_embedding) * np.linalg.norm(question_embedding)
+            )
+        except Exception as e:
+            print(f"Error calculating similarity: {e}")
+            continue
+        
+        # If similarity is above a certain threshold (e.g., 0.8), return the cached response
+        cached_response = r.get(f"{key}_response")
+        
+        if cached_response is not None:
+            return json.loads(cached_response)
+    
+    return None
+
+# Save question and response to Redis
+def save_to_redis(question, question_embedding, response):
+    # Store the question and embedding
+    r.set(question, json.dumps(question_embedding))
+    r.set(f"{question}_response", json.dumps(response))
+
+
 
 
 # Initialize PostgreSQL database with required table
@@ -132,21 +186,21 @@ def multi_search(key_word):
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI()
-def ask_openai(prompt):
-        response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": f"{prompt}"}
-        ],
-        temperature=0.7
-    )
+def ask_openai(prompt, mode):
+        if mode == 'prod':
+            response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": f"{prompt}"}
+            ],
+            temperature=0.7
+        )
+            response_content = response.choices[0].message.content
 
-    # Extract response content
-        response_content = response.choices[0].message
-
-        # Optionally, print or process the response
-        return response_content
+            return response_content
+        elif mode == 'test':
+            return 'My test response'
 def make_context(question, records):
     return f"""
         You are a helpful program which is given a quesion and then the results from video transcripts which should answer the question given.
@@ -166,15 +220,31 @@ def make_context(question, records):
         """
 
 def get_answer(question):
-    search_results = multi_search(question)
-    prompt = make_context(question,search_results)
-    try:
-        answer = ask_openai(prompt)
-    except Exception as e:
-        st.error(f"Error during Ollama completion: {e} your api key is set to {openai_api_key}")
-        answer = ""
-    return answer
-
+    # Step 1: Get the embedding for the question
+    question_embedding = get_embedding(question)
+    
+    # Step 2: Check if a similar question already exists in Redis
+    cached_response = check_redis_for_similar_question(question_embedding)
+    
+    if cached_response:
+        # Return cached response if found
+        st.write("Returning cached response from Redis.")
+        return cached_response
+    else:
+        # Perform multi-search (stubbed for simplicity)
+        search_results = multi_search(question)
+        
+        # Step 3: Create the prompt and call OpenAI API
+        prompt = make_context(question, search_results)
+        try:
+            answer = ask_openai(prompt, 'prod')
+            # Step 4: Cache the question, embedding, and response in Redis
+            save_to_redis(question, question_embedding, answer)
+        except Exception as e:
+            st.error(answer)
+            st.error(f"Error during OpenAI completion: {e} your API key is set to {openai_api_key}")
+            answer = {}
+        return answer
 
 def display_response(response):
     st.markdown(f"### Video Title: {response['title']}")
@@ -196,10 +266,10 @@ if st.button("Search"):
     
     try:
          # Check if results.content is a JSON string and parse it
-        response = json.loads(results.content) if isinstance(results.content, str) else results.content
+        response = json.loads(results) if isinstance(results, str) else results
     except json.JSONDecodeError as e:
         st.write(f"Error decoding JSON: {str(e)}")
-        st.write(results.content) 
+        st.write(results) 
     st.session_state.response = response
     st.session_state.feedback_submitted = False  # Reset feedback on new search
 
