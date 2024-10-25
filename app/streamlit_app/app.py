@@ -43,42 +43,55 @@ def check_redis_for_similar_question(question_embedding):
     # Ensure the question_embedding is a list of floats
     question_embedding = [float(x) for x in question_embedding]
 
-    # Iterate through all keys (which represent previous questions in Redis)
+    # Iterate through all keys (representing previous questions) in Redis
     for key in r.scan_iter():
+        # Decode the key from bytes to a string
+        key = key.decode("utf-8")
+
         # Retrieve the stored embedding from Redis
-        stored_embedding = r.get(key)
+        stored_data = r.get(key)
         
-        if stored_embedding is None:
-            continue  # Skip if there is no stored embedding
+        if stored_data is None or not stored_data.strip():
+            continue  # Skip if there is no stored data or it's empty
         
-        # Load the embedding as a JSON object
-        stored_embedding = json.loads(stored_embedding)
-        
-        # Ensure the stored embedding is also a list of floats
-        stored_embedding = [float(x) for x in stored_embedding]
+        # Load the stored data and check if it has an embedding field
+        try:
+            stored_data = json.loads(stored_data)
+            # If stored_data is a dictionary, extract 'embedding'; otherwise assume it's the embedding itself
+            stored_embedding = stored_data.get("embedding", []) if isinstance(stored_data, dict) else stored_data
+            # Ensure stored_embedding is a list of floats with the correct shape
+            if not isinstance(stored_embedding, list) or len(stored_embedding) != len(question_embedding):
+                print(f"Skipping key '{key}': embedding has an incorrect format or length")
+                continue
+            stored_embedding = [float(x) for x in stored_embedding]
+        except (json.JSONDecodeError, TypeError):
+            print(f"Skipping key '{key}': invalid format")
+            continue
         
         # Compare cosine similarity between the question and stored embeddings
         try:
             similarity = np.dot(stored_embedding, question_embedding) / (
                 np.linalg.norm(stored_embedding) * np.linalg.norm(question_embedding)
             )
+            if similarity > 0.8:  # Similarity threshold
+                cached_response = r.get(f"{key}_response")
+                if cached_response is not None:
+                    return json.loads(cached_response)
         except Exception as e:
-            print(f"Error calculating similarity: {e}")
+            print(f"Error calculating similarity for key '{key}': {e}")
             continue
-        
-        # If similarity is above a certain threshold (e.g., 0.8), return the cached response
-        cached_response = r.get(f"{key}_response")
-        
-        if cached_response is not None:
-            return json.loads(cached_response)
     
     return None
 
-# Save question and response to Redis
 def save_to_redis(question, question_embedding, response):
-    # Store the question and embedding
-    r.set(question, json.dumps(question_embedding))
+    # Store the question and embedding in a structured format
+    data = {
+        "embedding": question_embedding,
+        "question": question
+    }
+    r.set(question, json.dumps(data))
     r.set(f"{question}_response", json.dumps(response))
+
 
 
 
@@ -236,6 +249,7 @@ def get_answer(question):
         
         # Step 3: Create the prompt and call OpenAI API
         prompt = make_context(question, search_results)
+        
         try:
             answer = ask_openai(prompt, 'prod')
             # Step 4: Cache the question, embedding, and response in Redis
