@@ -49,6 +49,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.streamlit
+    volumes:
+      - ./streamlit_app/app.py:/app/app.py
     environment:
       - ELASTICSEARCH_HOST=elasticsearch
       - ELASTICSEARCH_PORT=9200
