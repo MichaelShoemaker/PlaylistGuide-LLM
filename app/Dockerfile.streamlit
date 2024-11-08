@@ -12,7 +12,7 @@ COPY .env .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the current directory contents into the container
-COPY streamlit_app/ .
+#COPY streamlit_app/ .
 
 # Command to run the Streamlit app
-CMD ["streamlit", "run", "app.py"]
+#CMD ["streamlit", "run", "app.py"]
