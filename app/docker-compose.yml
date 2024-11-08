@@ -58,12 +58,14 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
+      - STREAMLIT_SERVER_FILE_WATCHER_TYPE=poll
     ports:
       - "8501:8501"
     depends_on:
       - elasticsearch
       - db
       - pgadmin
+    command: streamlit run app.py --server.runOnSave true
 
   data_inserter:
     build:
